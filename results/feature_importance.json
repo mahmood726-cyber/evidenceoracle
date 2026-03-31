@@ -1,0 +1,126 @@
+{
+  "RandomForest": [
+    {
+      "feature": "prediction_sub",
+      "importance": 0.135312
+    },
+    {
+      "feature": "benford_mad",
+      "importance": 0.127519
+    },
+    {
+      "feature": "orb_sub",
+      "importance": 0.11732
+    },
+    {
+      "feature": "total_n",
+      "importance": 0.114343
+    },
+    {
+      "feature": "bias_sub",
+      "importance": 0.099595
+    },
+    {
+      "feature": "audit_pct_fail",
+      "importance": 0.094015
+    },
+    {
+      "feature": "k",
+      "importance": 0.087027
+    },
+    {
+      "feature": "audit_n_warn",
+      "importance": 0.077998
+    },
+    {
+      "feature": "audit_n_fail",
+      "importance": 0.070328
+    },
+    {
+      "feature": "audit_prediction_gap_flag",
+      "importance": 0.022837
+    },
+    {
+      "feature": "audit_model_misspec_flag",
+      "importance": 0.016573
+    },
+    {
+      "feature": "audit_pub_bias_flag",
+      "importance": 0.012936
+    },
+    {
+      "feature": "audit_excess_sig_flag",
+      "importance": 0.011388
+    },
+    {
+      "feature": "audit_integrity_flag",
+      "importance": 0.007664
+    },
+    {
+      "feature": "data_type_GIV",
+      "importance": 0.003802
+    }
+  ],
+  "GradientBoosting": [
+    {
+      "feature": "total_n",
+      "importance": 0.160427
+    },
+    {
+      "feature": "prediction_sub",
+      "importance": 0.147763
+    },
+    {
+      "feature": "benford_mad",
+      "importance": 0.143539
+    },
+    {
+      "feature": "audit_pct_fail",
+      "importance": 0.109207
+    },
+    {
+      "feature": "orb_sub",
+      "importance": 0.099671
+    },
+    {
+      "feature": "k",
+      "importance": 0.091448
+    },
+    {
+      "feature": "audit_n_warn",
+      "importance": 0.072968
+    },
+    {
+      "feature": "audit_n_fail",
+      "importance": 0.06307
+    },
+    {
+      "feature": "bias_sub",
+      "importance": 0.06108
+    },
+    {
+      "feature": "audit_prediction_gap_flag",
+      "importance": 0.014572
+    },
+    {
+      "feature": "audit_pub_bias_flag",
+      "importance": 0.00998
+    },
+    {
+      "feature": "audit_model_misspec_flag",
+      "importance": 0.009599
+    },
+    {
+      "feature": "audit_integrity_flag",
+      "importance": 0.00848
+    },
+    {
+      "feature": "audit_excess_sig_flag",
+      "importance": 0.005368
+    },
+    {
+      "feature": "data_type_GIV",
+      "importance": 0.002571
+    }
+  ]
+}
