@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 """
-EvidenceOracle — Feature Assembly Pipeline
-Loads pre-computed features from 7 existing projects, constructs a unified
+EvidenceOracle — Feature Assembly Pipeline (v2)
+Loads pre-computed features from 9 sources, constructs a unified
 feature matrix with ground truth labels, and outputs data/feature_matrix.csv.
+
+Sources 1-6: MetaAudit, FragilityAtlas, EvidenceQuality, BenfordMA, MetaShift, Pairwise70
+Sources 7-9: EvidenceHalfLife, BiasForensics, MES (Multiverse Evidence Synthesis)
 """
 
 import io
@@ -27,6 +30,9 @@ EVIDQUALITY_JSON = r"C:\EvidenceQuality\data\reviews_compact.json"
 BENFORD_JSON     = r"C:\BenfordMA\data\corpus_digits_compact.json"
 METASHIFT_JSON   = r"C:\MetaShift\data\compact.json"
 PAIRWISE70_DIR   = r"C:\Users\user\OneDrive - NHS\Documents\Pairwise70\data"
+HALFLIFE_CSV     = r"C:\EvidenceHalfLife\data\output\half_life_results.csv"
+BIASFORENSICS_CSV = r"C:\BiasForensics\data\output\bias_forensics_results.csv"
+MES_CSV          = r"C:\Models\MES\validation\results\batch_results.csv"
 
 OUTPUT_DIR       = os.path.join(os.path.dirname(__file__), "data")
 OUTPUT_CSV       = os.path.join(OUTPUT_DIR, "feature_matrix.csv")
@@ -49,7 +55,7 @@ def compute_benford_mad(digits_list):
 
 # ── Source 1: MetaAudit ──────────────────────────────────────────────────
 def load_metaaudit():
-    print("[1/6] Loading MetaAudit...")
+    print("[1/9] Loading MetaAudit...")
     df = pd.read_csv(METAAUDIT_CSV)
     # Extract review_id from ma_id: CD000028_pub4_data__A1 -> CD000028
     df["review_id"] = df["ma_id"].str.extract(r"^(CD\d+)")
@@ -99,7 +105,7 @@ def load_metaaudit():
 
 # ── Source 2: FragilityAtlas ─────────────────────────────────────────────
 def load_fragility():
-    print("[2/6] Loading FragilityAtlas...")
+    print("[2/9] Loading FragilityAtlas...")
     df = pd.read_csv(FRAGILITY_CSV)
     cols = [
         "review_id", "robustness_score", "classification",
@@ -117,7 +123,7 @@ def load_fragility():
 
 # ── Source 3: EvidenceQuality ────────────────────────────────────────────
 def load_evidence_quality():
-    print("[3/6] Loading EvidenceQuality...")
+    print("[3/9] Loading EvidenceQuality...")
     with open(EVIDQUALITY_JSON, "r") as f:
         data = json.load(f)
 
@@ -146,7 +152,7 @@ def load_evidence_quality():
 
 # ── Source 4: BenfordMA ──────────────────────────────────────────────────
 def load_benford():
-    print("[4/6] Loading BenfordMA...")
+    print("[4/9] Loading BenfordMA...")
     with open(BENFORD_JSON, "r") as f:
         data = json.load(f)
 
@@ -167,7 +173,7 @@ def load_benford():
 
 # ── Source 5: MetaShift ──────────────────────────────────────────────────
 def load_metashift():
-    print("[5/6] Loading MetaShift...")
+    print("[5/9] Loading MetaShift...")
     with open(METASHIFT_JSON, "r") as f:
         data = json.load(f)
 
@@ -203,7 +209,7 @@ def load_metashift():
 
 # ── Source 6: Pairwise70 (basic study-level features) ────────────────────
 def load_pairwise70():
-    print("[6/6] Loading Pairwise70 basics...")
+    print("[6/9] Loading Pairwise70 basics...")
     rda_files = glob.glob(os.path.join(PAIRWISE70_DIR, "*.rda"))
     print(f"  Found {len(rda_files)} .rda files")
 
@@ -269,10 +275,112 @@ def load_pairwise70():
     return result
 
 
+# ── Source 7: EvidenceHalfLife ──────────────────────────────────────────
+def load_halflife():
+    print("[7/9] Loading EvidenceHalfLife...")
+    df = pd.read_csv(HALFLIFE_CSV)
+
+    # Features: half_life_k, half_life_year (may be NaN if never stabilized),
+    # volatility, n_flips, final_class (Robust/Moderate/Fragile/Unstable),
+    # stabilizes (Yes/No), early_stabilizer (Yes/No), half_life_pct, year_span
+    result = pd.DataFrame()
+    result["review_id"] = df["review_id"]
+    result["hl_half_life_k"] = pd.to_numeric(df["half_life_k"], errors="coerce")
+    result["hl_volatility"] = pd.to_numeric(df["volatility"], errors="coerce")
+    result["hl_n_flips"] = pd.to_numeric(df["n_flips"], errors="coerce")
+    result["hl_half_life_pct"] = pd.to_numeric(df["half_life_pct"], errors="coerce")
+    result["hl_year_span"] = pd.to_numeric(df["year_span"], errors="coerce")
+    result["hl_final_score"] = pd.to_numeric(df["final_score"], errors="coerce")
+
+    # Binary: stabilizes, early_stabilizer
+    result["hl_stabilizes"] = (df["stabilizes"] == "Yes").astype(int)
+    result["hl_early_stabilizer"] = (df["early_stabilizer"] == "Yes").astype(int)
+
+    # One-hot final_class (temporal stability class — NOT the same as FragilityAtlas)
+    result["hl_class_unstable"] = (df["final_class"] == "Unstable").astype(int)
+    result["hl_class_robust"] = (df["final_class"] == "Robust").astype(int)
+
+    print(f"  -> {len(result)} reviews, {result['hl_stabilizes'].sum()} stabilized, "
+          f"{result['hl_class_unstable'].sum()} temporally unstable")
+    return result
+
+
+# ── Source 8: BiasForensics ─────────────────────────────────────────────
+def load_bias_forensics():
+    print("[8/9] Loading BiasForensics...")
+    df = pd.read_csv(BIASFORENSICS_CSV)
+
+    result = pd.DataFrame()
+    result["review_id"] = df["review_id"]
+
+    # Core bias detection metrics
+    result["bf_egger_p"] = pd.to_numeric(df["egger_p"], errors="coerce")
+    result["bf_egger_sig"] = pd.to_numeric(df["egger_sig"], errors="coerce")
+    result["bf_begg_tau"] = pd.to_numeric(df["begg_tau"], errors="coerce")
+    result["bf_begg_sig"] = pd.to_numeric(df["begg_sig"], errors="coerce")
+
+    # P-curve / z-curve evidence strength
+    result["bf_pcurve_evidential"] = pd.to_numeric(df["pcurve_evidential"], errors="coerce")
+    result["bf_pcurve_inadequate"] = pd.to_numeric(df["pcurve_inadequate"], errors="coerce")
+    result["bf_zcurve_edr"] = pd.to_numeric(df["zcurve_edr"], errors="coerce")
+
+    # Trim-and-fill, selection model
+    result["bf_tf_k0"] = pd.to_numeric(df["tf_k0"], errors="coerce")
+    result["bf_n_detect"] = pd.to_numeric(df["n_detect"], errors="coerce")
+    result["bf_max_shift"] = pd.to_numeric(df["max_shift"], errors="coerce")
+    result["bf_mean_shift"] = pd.to_numeric(df["mean_shift"], errors="coerce")
+    result["bf_concordance"] = pd.to_numeric(df["concordance"], errors="coerce")
+
+    # Bias classification one-hot (Confirmed/Suspected/Clean/Discordant)
+    result["bf_class_confirmed"] = (df["bias_class"] == "Confirmed").astype(int)
+    result["bf_class_suspected"] = (df["bias_class"] == "Suspected").astype(int)
+
+    print(f"  -> {len(result)} reviews, "
+          f"{result['bf_class_confirmed'].sum()} confirmed bias, "
+          f"{result['bf_class_suspected'].sum()} suspected bias")
+    return result
+
+
+# ── Source 9: MES (Multiverse Evidence Synthesis) ───────────────────────
+def load_mes():
+    print("[9/9] Loading MES...")
+    df = pd.read_csv(MES_CSV)
+
+    # Filter to status == OK (skip SKIP rows with no data)
+    df = df[df["status"] == "OK"].copy()
+
+    # Keep only one row per review_id (take first if duplicates)
+    df = df.drop_duplicates(subset="review_id", keep="first")
+
+    result = pd.DataFrame()
+    result["review_id"] = df["review_id"].values
+
+    # c_sig: concordance significance (fraction of multiverse agreeing with primary)
+    result["mes_c_sig"] = pd.to_numeric(df["c_sig"].values, errors="coerce")
+
+    # pi_null_rate: proportion of multiverse specs yielding null result
+    result["mes_pi_null_rate"] = pd.to_numeric(df["pi_null_rate"].values, errors="coerce")
+
+    # dominant_eta2: effect size of the dominant analytical dimension
+    result["mes_dominant_eta2"] = pd.to_numeric(df["dominant_eta2"].values, errors="coerce")
+
+    # dominant_dim one-hot (almost all bias_correction, but encode it)
+    result["mes_dim_bias_correction"] = (df["dominant_dim"].values == "bias_correction").astype(int)
+
+    # NOTE: overall_class, cond_rct_class, cond_low_rob_class are EXCLUDED
+    # because they encode fragility-like classifications.
+    # certification is EXCLUDED because it's constant (all PASS).
+
+    print(f"  -> {len(result)} reviews, "
+          f"mean c_sig={result['mes_c_sig'].mean():.3f}, "
+          f"mean pi_null_rate={result['mes_pi_null_rate'].mean():.3f}")
+    return result
+
+
 # ── Assembly ─────────────────────────────────────────────────────────────
 def assemble():
     print("=" * 60)
-    print("EvidenceOracle: Feature Assembly Pipeline")
+    print("EvidenceOracle: Feature Assembly Pipeline (v2 — 9 sources)")
     print("=" * 60)
     print()
 
@@ -283,6 +391,9 @@ def assemble():
     benford_df   = load_benford()
     metashift_df = load_metashift()
     pairwise_df  = load_pairwise70()
+    halflife_df  = load_halflife()
+    biasfor_df   = load_bias_forensics()
+    mes_df       = load_mes()
 
     print()
     print("-" * 60)
@@ -295,6 +406,9 @@ def assemble():
     merged = merged.merge(benford_df, on="review_id", how="left")
     merged = merged.merge(metashift_df, on="review_id", how="left")
     merged = merged.merge(pairwise_df, on="review_id", how="left")
+    merged = merged.merge(halflife_df, on="review_id", how="left")
+    merged = merged.merge(biasfor_df, on="review_id", how="left")
+    merged = merged.merge(mes_df, on="review_id", how="left")
 
     print(f"  Rows after merge: {len(merged)}")
     print(f"  Columns: {len(merged.columns)}")
