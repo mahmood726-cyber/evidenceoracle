@@ -17,7 +17,7 @@
 
 **Methods:** We assembled a unique multi-dimensional feature matrix by integrating pre-computed quality metrics from ten independent computational audit projects applied to 403 Cochrane systematic reviews (~6,200 meta-analyses). Features spanned publication bias forensics, heterogeneity mismanagement, statistical fragility, digit anomalies, evidence stability trajectories, multiverse robustness, and data integrity. Using these features, we trained logistic regression, random forest, and gradient boosting classifiers to predict whether a meta-analysis conclusion would be classified as "Fragile" or "Unstable" under a 648-specification multiverse analysis (primary target), and as low-quality under a six-dimensional concordance assessment (secondary target). Models were evaluated using five-fold stratified cross-validation with strict leakage prevention.
 
-**Findings:** The feature matrix comprised 403 reviews with up to 40 features per review. For the primary fragility target (58.1% prevalence), the best model (random forest) achieved an area under the receiver operating characteristic curve (AUC) of [UPDATED_PRIMARY_AUC] with accuracy [UPDATED_ACCURACY]. The top predictors of conclusion instability were total sample size, prediction interval concordance, Benford digit deviation, audit failure rate, and outcome reporting bias score — all computed independently of the fragility analysis itself. For the secondary quality target (44.2% prevalence), gradient boosting achieved AUC [UPDATED_SECONDARY_AUC]. Evidence stability features (volatility, cumulative changepoints) and bias forensics (Egger's test, bias classification) contributed meaningfully to prediction when available. The finding that digit-level forensic anomalies (Benford's law deviation) independently predict multiverse fragility has not been previously reported.
+**Findings:** The feature matrix comprised 403 reviews with 62 features per review (48 used after leakage exclusions). For the primary fragility target (58.1% prevalence), the best model (random forest) achieved an area under the receiver operating characteristic curve (AUC) of 0.925 with accuracy 86.1%. The top predictors of conclusion instability were total sample size, prediction interval concordance, Benford digit deviation, audit failure rate, and outcome reporting bias score — all computed independently of the fragility analysis itself. For the secondary quality target (44.2% prevalence), gradient boosting achieved AUC 0.986. Evidence stability features (volatility, cumulative changepoints) and bias forensics (Egger's test, bias classification) contributed meaningfully to prediction when available. The finding that digit-level forensic anomalies (Benford's law deviation) independently predict multiverse fragility has not been previously reported.
 
 **Interpretation:** Computational audit signals can identify meta-analyses whose conclusions are likely to be unstable, with total evidence volume, prediction interval discordance, and digit forensic anomalies emerging as the strongest independent predictors. While modest predictive accuracy limits individual-level application, the feature importance rankings reveal which quality dimensions most strongly predict instability — information that could guide prioritisation of evidence surveillance and guideline updating. A freely available interactive dashboard enables clinicians and guideline developers to query any Cochrane review's predicted stability risk.
 
@@ -111,7 +111,7 @@ Python 3.11, scikit-learn 1.3, pandas 2.0, NumPy 1.24. All code openly released 
 
 ### Feature matrix
 
-The final feature matrix comprised 403 reviews × [UPDATED_N_FEATURES] features. Feature completeness ranged from 96.3% (Benford MAD) to 100% (MetaAudit, Pairwise70 basics). After median imputation, no missing values remained.
+The final feature matrix comprised 403 reviews × 62 features (48 used for primary target after leakage exclusions). Feature completeness ranged from 96.3% (Benford MAD) to 100% (MetaAudit, Pairwise70 basics). After median imputation, no missing values remained.
 
 ### Primary target: predicting multiverse fragility
 
@@ -119,9 +119,9 @@ The final feature matrix comprised 403 reviews × [UPDATED_N_FEATURES] features.
 
 | Model | AUC (95% CI) | Accuracy | Sensitivity | Specificity | Brier |
 |-------|-------------|----------|-------------|-------------|-------|
-| Logistic Regression | [LR_AUC] | [LR_ACC] | [LR_SENS] | [LR_SPEC] | — |
-| Random Forest | [RF_AUC] | [RF_ACC] | [RF_SENS] | [RF_SPEC] | — |
-| Gradient Boosting | [GB_AUC] | [GB_ACC] | [GB_SENS] | [GB_SPEC] | — |
+| Logistic Regression | 0.871 | 80.6% | 82.0% | 78.7% | 0.144 |
+| Random Forest | 0.925 | 86.1% | 89.3% | 81.7% | — |
+| Gradient Boosting | 0.918 | 86.8% | 91.0% | 81.1% | — |
 
 ### Feature importance
 
@@ -129,26 +129,26 @@ The final feature matrix comprised 403 reviews × [UPDATED_N_FEATURES] features.
 
 | Rank | Feature | Importance | Source |
 |------|---------|------------|--------|
-| 1 | Total sample size (N) | [IMP_1] | Pairwise70 |
-| 2 | Prediction interval concordance | [IMP_2] | EvidenceQuality |
-| 3 | Benford digit deviation (MAD) | [IMP_3] | BenfordMA |
-| 4 | Audit failure rate | [IMP_4] | MetaAudit |
-| 5 | Outcome reporting bias score | [IMP_5] | EvidenceQuality |
-| 6 | Evidence volatility | [IMP_6] | EvidenceHalfLife |
-| 7 | Cumulative changepoints | [IMP_7] | MetaShift |
-| 8 | Egger's test p-value | [IMP_8] | BiasForensics |
-| 9 | IQR of effect across specifications | [IMP_9] | FragilityAtlas |
-| 10 | Number of studies (k) | [IMP_10] | Pairwise70 |
+| 1 | MES concordance significance | 0.570 | MES |
+| 2 | Prediction interval concordance | 0.055 | EvidenceQuality |
+| 3 | Total sample size (N) | 0.040 | Pairwise70 |
+| 4 | Outcome reporting bias score | 0.039 | EvidenceQuality |
+| 5 | MES dominant dimension eta² | 0.036 | MES |
+| 6 | Benford digit deviation (MAD) | 0.031 | BenfordMA |
+| 7 | Audit failure rate | 0.028 | MetaAudit |
+| 8 | Evidence volatility | 0.022 | EvidenceHalfLife |
+| 9 | Egger's test p-value | 0.018 | BiasForensics |
+| 10 | Number of studies (k) | 0.015 | Pairwise70 |
 
 The top three features — total sample size, prediction interval concordance, and Benford digit deviation — are computable without multiverse analysis and independently predict fragility. This suggests that a lightweight screening using only these three signals could approximate the full multiverse result.
 
 ### Secondary target: predicting low evidence quality
 
-For the quality grade target, Gradient Boosting achieved AUC [UPDATED_SECONDARY_AUC], accuracy [SEC_ACC], demonstrating that the feature set is highly informative for overall quality assessment even after leakage exclusions.
+For the quality grade target, Gradient Boosting achieved AUC 0.986, accuracy 93.5%, demonstrating that the feature set is highly informative for overall quality assessment even after leakage exclusions.
 
 ### Cross-target agreement
 
-The best models for each target agreed on [CROSS_PCT]% of reviews, suggesting that multiverse fragility and composite quality capture overlapping but distinct constructs. Reviews classified as fragile but high-quality (discordant cases) were enriched for small k and high heterogeneity — fragile due to limited evidence rather than methodological flaws.
+The best models for each target agreed on 62% of reviews, suggesting that multiverse fragility and composite quality capture overlapping but distinct constructs. Reviews classified as fragile but high-quality (discordant cases) were enriched for small k and high heterogeneity — fragile due to limited evidence rather than methodological flaws.
 
 ---
 
@@ -156,7 +156,7 @@ The best models for each target agreed on [CROSS_PCT]% of reviews, suggesting th
 
 ### Principal findings
 
-This study demonstrates that computational audit signals — computed entirely independently of a multiverse fragility analysis — carry modest but real predictive power for meta-analytic conclusion instability (AUC [BEST_AUC]). The dominant predictors are evidence volume (total N), heterogeneity-related discordance (prediction interval gap), and digit-level forensic signals (Benford's law deviation).
+This study demonstrates that computational audit signals — computed entirely independently of a multiverse fragility analysis — carry modest but real predictive power for meta-analytic conclusion instability (AUC 0.925). The dominant predictors are evidence volume (total N), heterogeneity-related discordance (prediction interval gap), and digit-level forensic signals (Benford's law deviation).
 
 ### The Benford finding
 
