@@ -24,12 +24,14 @@ import numpy as np
 import pandas as pd
 
 # ── Paths ────────────────────────────────────────────────────────────────
-METAAUDIT_CSV    = r"C:\MetaAudit\results\audit_results.csv"
-FRAGILITY_CSV    = r"C:\FragilityAtlas\data\output\fragility_atlas_results.csv"
+METAAUDIT_CSV    = os.getenv("METAAUDIT_ROOT", r"C:\MetaAudit") + r"\results\audit_results.csv"
+FRAGILITY_CSV    = os.getenv("FRAGILITY_ROOT", r"C:\FragilityAtlas") + r"\data\output\fragility_atlas_results.csv"
 EVIDQUALITY_JSON = r"C:\EvidenceQuality\data\reviews_compact.json"
 BENFORD_JSON     = r"C:\BenfordMA\data\corpus_digits_compact.json"
 METASHIFT_JSON   = r"C:\MetaShift\data\compact.json"
-PAIRWISE70_DIR   = r"C:\Users\user\OneDrive - NHS\Documents\Pairwise70\data"
+# PAIRWISE70_DIR points at a user-specific OneDrive-NHS path. Use env var to
+# keep the confidential path out of git; fall back to a generic local location.
+PAIRWISE70_DIR   = os.getenv("PAIRWISE70_DIR", r"C:\Pairwise70\data")
 HALFLIFE_CSV     = r"C:\EvidenceHalfLife\data\output\half_life_results.csv"
 BIASFORENSICS_CSV = r"C:\BiasForensics\data\output\bias_forensics_results.csv"
 MES_CSV          = r"C:\Models\MES\validation\results\batch_results.csv"

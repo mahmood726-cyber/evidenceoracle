@@ -10,8 +10,9 @@ import os
 import json
 import warnings
 
-# UTF-8 stdout for Windows cp1252
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+# UTF-8 stdout for Windows cp1252 — only when running standalone, not under pytest
+if "pytest" not in sys.modules:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 warnings.filterwarnings("ignore")
 
 import numpy as np
