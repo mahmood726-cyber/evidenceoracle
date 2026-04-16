@@ -6,3 +6,10 @@ __pycache__/
 # pytest
 .pytest_cache/
 .pytest_tmp/
+# === Sentinel hook output (auto-added by install) ===
+STUCK_FAILURES.md
+STUCK_FAILURES.jsonl
+sentinel-findings.md
+sentinel-findings.jsonl
+review-findings.md
+review-findings.jsonl
