@@ -15,6 +15,7 @@ import json
 import re
 import glob
 import warnings
+from pathlib import Path
 
 # UTF-8 stdout for Windows cp1252
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -24,20 +25,99 @@ import numpy as np
 import pandas as pd
 
 # ── Paths ────────────────────────────────────────────────────────────────
-METAAUDIT_CSV    = os.getenv("METAAUDIT_ROOT", r"C:\MetaAudit") + r"\results\audit_results.csv"
-FRAGILITY_CSV    = os.getenv("FRAGILITY_ROOT", r"C:\FragilityAtlas") + r"\data\output\fragility_atlas_results.csv"
-EVIDQUALITY_JSON = r"C:\EvidenceQuality\data\reviews_compact.json"
-BENFORD_JSON     = r"C:\BenfordMA\data\corpus_digits_compact.json"
-METASHIFT_JSON   = r"C:\MetaShift\data\compact.json"
-# PAIRWISE70_DIR points at a user-specific OneDrive-NHS path. Use env var to
-# keep the confidential path out of git; fall back to a generic local location.
-PAIRWISE70_DIR   = os.getenv("PAIRWISE70_DIR", r"C:\Pairwise70\data")
-HALFLIFE_CSV     = r"C:\EvidenceHalfLife\data\output\half_life_results.csv"
-BIASFORENSICS_CSV = r"C:\BiasForensics\data\output\bias_forensics_results.csv"
-MES_CSV          = r"C:\Models\MES\validation\results\batch_results.csv"
+SCRIPT_DIR = Path(__file__).resolve().parent
+DRIVE_ROOTS = [Path("C:/"), Path("D:/")]
 
-OUTPUT_DIR       = os.path.join(os.path.dirname(__file__), "data")
-OUTPUT_CSV       = os.path.join(OUTPUT_DIR, "feature_matrix.csv")
+
+def _candidate_roots(*relative_roots):
+    candidates = []
+    for drive_root in DRIVE_ROOTS:
+        for relative_root in relative_roots:
+            candidates.append(drive_root / relative_root)
+    return candidates
+
+
+def resolve_existing_file(env_var, relative_path, *relative_roots):
+    candidates = []
+    env_root = os.getenv(env_var, "")
+    if env_root:
+        candidates.append(Path(env_root).expanduser() / relative_path)
+    candidates.extend(root / relative_path for root in _candidate_roots(*relative_roots))
+
+    for candidate in candidates:
+        if candidate.is_file():
+            return str(candidate)
+
+    raise FileNotFoundError(
+        f"{relative_path} not found. Set {env_var} or place the source under one of: "
+        + ", ".join(str(root) for root in _candidate_roots(*relative_roots))
+    )
+
+
+def resolve_existing_dir(env_var, *relative_dirs):
+    candidates = []
+    env_dir = os.getenv(env_var, "")
+    if env_dir:
+        candidates.append(Path(env_dir).expanduser())
+    candidates.extend(_candidate_roots(*relative_dirs))
+
+    for candidate in candidates:
+        if candidate.is_dir():
+            return str(candidate)
+
+    raise FileNotFoundError(
+        f"Directory for {env_var} not found. Set {env_var} or place it under one of: "
+        + ", ".join(str(path) for path in _candidate_roots(*relative_dirs))
+    )
+
+
+METAAUDIT_CSV = resolve_existing_file("METAAUDIT_ROOT", Path("results") / "audit_results.csv", "MetaAudit", "Models/MetaAudit")
+FRAGILITY_CSV = resolve_existing_file(
+    "FRAGILITY_ROOT",
+    Path("data") / "output" / "fragility_atlas_results.csv",
+    "FragilityAtlas",
+    "Models/FragilityAtlas",
+)
+EVIDQUALITY_JSON = resolve_existing_file(
+    "EVIDENCEQUALITY_ROOT",
+    Path("data") / "reviews_compact.json",
+    "EvidenceQuality",
+    "Models/EvidenceQuality",
+)
+BENFORD_JSON = resolve_existing_file(
+    "BENFORD_ROOT",
+    Path("data") / "corpus_digits_compact.json",
+    "BenfordMA",
+    "Models/BenfordMA",
+)
+METASHIFT_JSON = resolve_existing_file(
+    "METASHIFT_ROOT",
+    Path("data") / "compact.json",
+    "MetaShift",
+    "Models/MetaShift",
+)
+PAIRWISE70_DIR = resolve_existing_dir("PAIRWISE70_DIR", "Projects/Pairwise70/data", "Pairwise70/data")
+HALFLIFE_CSV = resolve_existing_file(
+    "EVIDENCEHALFLIFE_ROOT",
+    Path("data") / "output" / "half_life_results.csv",
+    "EvidenceHalfLife",
+    "Models/EvidenceHalfLife",
+)
+BIASFORENSICS_CSV = resolve_existing_file(
+    "BIASFORENSICS_ROOT",
+    Path("data") / "output" / "bias_forensics_results.csv",
+    "BiasForensics",
+    "Models/BiasForensics",
+)
+MES_CSV = resolve_existing_file(
+    "MES_ROOT",
+    Path("validation") / "results" / "batch_results.csv",
+    "Models/MES",
+    "MES",
+)
+
+OUTPUT_DIR = SCRIPT_DIR / "data"
+OUTPUT_CSV = OUTPUT_DIR / "feature_matrix.csv"
 
 
 # ── Helper: Benford MAD ──────────────────────────────────────────────────
