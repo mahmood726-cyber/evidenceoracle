@@ -23,8 +23,14 @@ are fragile or unstable (likely to be overturned by new evidence).
 pip install -r requirements.txt
 python assemble_features.py    # build data/feature_matrix.csv
 python train_model.py          # train and write results/
-python -m pytest -q            # 16 tests
+python -m pytest -q            # data integrity and pipeline regression tests
 ```
+
+Imports do not discover external sources or change the caller's output stream.
+Each feature loader accepts an optional explicit file/directory path and otherwise
+resolves its own source when called. A configured but missing source raises an
+error instead of falling back to another dataset. Full assembly still requires
+all nine upstream sources.
 
 ## Notes
 
