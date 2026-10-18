@@ -8,19 +8,12 @@ Sources 1-6: MetaAudit, FragilityAtlas, EvidenceQuality, BenfordMA, MetaShift, P
 Sources 7-9: EvidenceHalfLife, BiasForensics, MES (Multiverse Evidence Synthesis)
 """
 
-import io
 import sys
 import os
 import json
 import re
 import glob
-import warnings
 from pathlib import Path
-
-# UTF-8 stdout for Windows cp1252 — only when running standalone, not under pytest
-if "pytest" not in sys.modules:
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-warnings.filterwarnings("ignore")
 
 import numpy as np
 import pandas as pd
@@ -42,7 +35,10 @@ def resolve_existing_file(env_var, relative_path, *relative_roots):
     candidates = []
     env_root = os.getenv(env_var, "")
     if env_root:
-        candidates.append(Path(env_root).expanduser() / relative_path)
+        candidate = Path(env_root).expanduser() / relative_path
+        if not candidate.is_file():
+            raise FileNotFoundError(f"{env_var} points to a missing source: {candidate}")
+        return str(candidate)
     candidates.extend(root / relative_path for root in _candidate_roots(*relative_roots))
 
     for candidate in candidates:
@@ -59,7 +55,10 @@ def resolve_existing_dir(env_var, *relative_dirs):
     candidates = []
     env_dir = os.getenv(env_var, "")
     if env_dir:
-        candidates.append(Path(env_dir).expanduser())
+        candidate = Path(env_dir).expanduser()
+        if not candidate.is_dir():
+            raise FileNotFoundError(f"{env_var} points to a missing directory: {candidate}")
+        return str(candidate)
     candidates.extend(_candidate_roots(*relative_dirs))
 
     for candidate in candidates:
@@ -72,50 +71,6 @@ def resolve_existing_dir(env_var, *relative_dirs):
     )
 
 
-METAAUDIT_CSV = resolve_existing_file("METAAUDIT_ROOT", Path("results") / "audit_results.csv", "MetaAudit", "Models/MetaAudit")
-FRAGILITY_CSV = resolve_existing_file(
-    "FRAGILITY_ROOT",
-    Path("data") / "output" / "fragility_atlas_results.csv",
-    "FragilityAtlas",
-    "Models/FragilityAtlas",
-)
-EVIDQUALITY_JSON = resolve_existing_file(
-    "EVIDENCEQUALITY_ROOT",
-    Path("data") / "reviews_compact.json",
-    "EvidenceQuality",
-    "Models/EvidenceQuality",
-)
-BENFORD_JSON = resolve_existing_file(
-    "BENFORD_ROOT",
-    Path("data") / "corpus_digits_compact.json",
-    "BenfordMA",
-    "Models/BenfordMA",
-)
-METASHIFT_JSON = resolve_existing_file(
-    "METASHIFT_ROOT",
-    Path("data") / "compact.json",
-    "MetaShift",
-    "Models/MetaShift",
-)
-PAIRWISE70_DIR = resolve_existing_dir("PAIRWISE70_DIR", "Projects/Pairwise70/data", "Pairwise70/data")
-HALFLIFE_CSV = resolve_existing_file(
-    "EVIDENCEHALFLIFE_ROOT",
-    Path("data") / "output" / "half_life_results.csv",
-    "EvidenceHalfLife",
-    "Models/EvidenceHalfLife",
-)
-BIASFORENSICS_CSV = resolve_existing_file(
-    "BIASFORENSICS_ROOT",
-    Path("data") / "output" / "bias_forensics_results.csv",
-    "BiasForensics",
-    "Models/BiasForensics",
-)
-MES_CSV = resolve_existing_file(
-    "MES_ROOT",
-    Path("validation") / "results" / "batch_results.csv",
-    "Models/MES",
-    "MES",
-)
 
 OUTPUT_DIR = SCRIPT_DIR / "data"
 OUTPUT_CSV = OUTPUT_DIR / "feature_matrix.csv"
@@ -137,7 +92,8 @@ def compute_benford_mad(digits_list):
 
 
 # ── Source 1: MetaAudit ──────────────────────────────────────────────────
-def load_metaaudit():
+def load_metaaudit(path=None):
+    METAAUDIT_CSV = path if path is not None else resolve_existing_file("METAAUDIT_ROOT", Path("results") / "audit_results.csv", "MetaAudit", "Models/MetaAudit")
     print("[1/9] Loading MetaAudit...")
     df = pd.read_csv(METAAUDIT_CSV)
     # Extract review_id from ma_id: CD000028_pub4_data__A1 -> CD000028
@@ -187,7 +143,13 @@ def load_metaaudit():
 
 
 # ── Source 2: FragilityAtlas ─────────────────────────────────────────────
-def load_fragility():
+def load_fragility(path=None):
+    FRAGILITY_CSV = path if path is not None else resolve_existing_file(
+        "FRAGILITY_ROOT",
+        Path("data") / "output" / "fragility_atlas_results.csv",
+        "FragilityAtlas",
+        "Models/FragilityAtlas",
+    )
     print("[2/9] Loading FragilityAtlas...")
     df = pd.read_csv(FRAGILITY_CSV)
     cols = [
@@ -205,7 +167,13 @@ def load_fragility():
 
 
 # ── Source 3: EvidenceQuality ────────────────────────────────────────────
-def load_evidence_quality():
+def load_evidence_quality(path=None):
+    EVIDQUALITY_JSON = path if path is not None else resolve_existing_file(
+        "EVIDENCEQUALITY_ROOT",
+        Path("data") / "reviews_compact.json",
+        "EvidenceQuality",
+        "Models/EvidenceQuality",
+    )
     print("[3/9] Loading EvidenceQuality...")
     with open(EVIDQUALITY_JSON, "r") as f:
         data = json.load(f)
@@ -234,7 +202,13 @@ def load_evidence_quality():
 
 
 # ── Source 4: BenfordMA ──────────────────────────────────────────────────
-def load_benford():
+def load_benford(path=None):
+    BENFORD_JSON = path if path is not None else resolve_existing_file(
+        "BENFORD_ROOT",
+        Path("data") / "corpus_digits_compact.json",
+        "BenfordMA",
+        "Models/BenfordMA",
+    )
     print("[4/9] Loading BenfordMA...")
     with open(BENFORD_JSON, "r") as f:
         data = json.load(f)
@@ -255,7 +229,13 @@ def load_benford():
 
 
 # ── Source 5: MetaShift ──────────────────────────────────────────────────
-def load_metashift():
+def load_metashift(path=None):
+    METASHIFT_JSON = path if path is not None else resolve_existing_file(
+        "METASHIFT_ROOT",
+        Path("data") / "compact.json",
+        "MetaShift",
+        "Models/MetaShift",
+    )
     print("[5/9] Loading MetaShift...")
     with open(METASHIFT_JSON, "r") as f:
         data = json.load(f)
@@ -291,7 +271,8 @@ def load_metashift():
 
 
 # ── Source 6: Pairwise70 (basic study-level features) ────────────────────
-def load_pairwise70():
+def load_pairwise70(path=None):
+    PAIRWISE70_DIR = path if path is not None else resolve_existing_dir("PAIRWISE70_DIR", "Projects/Pairwise70/data", "Pairwise70/data")
     print("[6/9] Loading Pairwise70 basics...")
     rda_files = glob.glob(os.path.join(PAIRWISE70_DIR, "*.rda"))
     print(f"  Found {len(rda_files)} .rda files")
@@ -359,7 +340,13 @@ def load_pairwise70():
 
 
 # ── Source 7: EvidenceHalfLife ──────────────────────────────────────────
-def load_halflife():
+def load_halflife(path=None):
+    HALFLIFE_CSV = path if path is not None else resolve_existing_file(
+        "EVIDENCEHALFLIFE_ROOT",
+        Path("data") / "output" / "half_life_results.csv",
+        "EvidenceHalfLife",
+        "Models/EvidenceHalfLife",
+    )
     print("[7/9] Loading EvidenceHalfLife...")
     df = pd.read_csv(HALFLIFE_CSV)
 
@@ -389,7 +376,13 @@ def load_halflife():
 
 
 # ── Source 8: BiasForensics ─────────────────────────────────────────────
-def load_bias_forensics():
+def load_bias_forensics(path=None):
+    BIASFORENSICS_CSV = path if path is not None else resolve_existing_file(
+        "BIASFORENSICS_ROOT",
+        Path("data") / "output" / "bias_forensics_results.csv",
+        "BiasForensics",
+        "Models/BiasForensics",
+    )
     print("[8/9] Loading BiasForensics...")
     df = pd.read_csv(BIASFORENSICS_CSV)
 
@@ -425,7 +418,13 @@ def load_bias_forensics():
 
 
 # ── Source 9: MES (Multiverse Evidence Synthesis) ───────────────────────
-def load_mes():
+def load_mes(path=None):
+    MES_CSV = path if path is not None else resolve_existing_file(
+        "MES_ROOT",
+        Path("validation") / "results" / "batch_results.csv",
+        "Models/MES",
+        "MES",
+    )
     print("[9/9] Loading MES...")
     df = pd.read_csv(MES_CSV)
 
@@ -568,4 +567,6 @@ def assemble():
 
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     assemble()

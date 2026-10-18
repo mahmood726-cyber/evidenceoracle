@@ -5,16 +5,9 @@ Trains Logistic Regression, Random Forest, and Gradient Boosting to predict
 which meta-analysis conclusions are fragile/unstable (likely to be overturned).
 """
 
-import io
 import sys
 import os
 import json
-import warnings
-
-# UTF-8 stdout for Windows cp1252 — only when running standalone, not under pytest
-if "pytest" not in sys.modules:
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-warnings.filterwarnings("ignore")
 
 import numpy as np
 import pandas as pd
@@ -328,4 +321,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     main()
